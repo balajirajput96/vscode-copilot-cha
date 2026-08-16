@@ -1,0 +1,4 @@
+## 2023-10-24 - Information Leakage in API Error Response
+**Vulnerability:** The `/predict` endpoint in `main.py` was returning internal Python stack trace or exception string directly to the client via a 500 HTTPException.
+**Learning:** Returning `str(e)` directly inside FastAPI exceptions inadvertently exposed potentially sensitive information regarding server configuration and internal application structure when requests fail.
+**Prevention:** Instead of directly returning `str(e)` to the client, applications should securely log the error trace server-side and respond to the client with generic error messages (e.g. "Internal server error") to limit information exposure.

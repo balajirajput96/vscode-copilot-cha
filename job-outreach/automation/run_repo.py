@@ -111,7 +111,7 @@ def write_jobs(rows):
 
 
 def dkey(company, title, location, url):
-    return hashlib.sha1(f"{company}|{title}|{location}|{url}".lower().encode()).hexdigest()[:12]
+    return hashlib.sha256(f"{company}|{title}|{location}|{url}".lower().encode()).hexdigest()[:12]
 
 
 def process_page(url, rows, keys):

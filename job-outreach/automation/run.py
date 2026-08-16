@@ -131,7 +131,7 @@ def ensure_sheet(sh):
 
 def dedup_key(company, title, location, url):
     raw = f"{company}|{title}|{location}|{url}".lower().strip()
-    return hashlib.sha1(raw.encode()).hexdigest()[:12]
+    return hashlib.sha256(raw.encode()).hexdigest()[:12]
 
 
 # ----------------------------------------------------------------- pipeline

@@ -6,3 +6,8 @@
 **Vulnerability:** The `load_recipients` function in `job-outreach/send_applications.py` accepted an arbitrary URL via command-line or environment variable and fetched it using `urllib.request.urlopen()`. Because `urllib` natively supports `file://` schemes, this could be exploited to read sensitive local files (like `/etc/passwd`).
 **Learning:** `urllib.request.urlopen` is a highly powerful and risky function because it supports various protocol schemas automatically without filtering, unlike simpler HTTP-only request libraries. Unvalidated user input (like a CLI argument or environment variable that could be poisoned) passed to this function poses a severe SSRF and LFI risk.
 **Prevention:** Always validate and restrict the protocol schemas (e.g., to only `http://` and `https://`) before passing unverified URLs to `urllib.request.urlopen`. Alternatively, prefer safer libraries like `requests` for fetching remote data.
+
+## 2025-02-18 - [CRITICAL] Fix DoS Risk in FastAPI ML Endpoint
+**Vulnerability:** The `/predict` endpoint in FastAPI accepted an unbounded list of floats (`List[float]`) which were immediately allocated into a NumPy array. An attacker could send a massive payload, leading to rapid resource exhaustion, memory out-of-bounds, and a Denial of Service.
+**Learning:** Pydantic models in FastAPI endpoints do not enforce default length limits on array/list types. It is a common oversight to leave these unbounded.
+**Prevention:** Always use `pydantic.Field` with a `max_length` constraint for array or list inputs in API endpoints to bound resource allocation.

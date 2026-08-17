@@ -117,7 +117,7 @@ def load_recipients(path=None, url=None):
         if not export.startswith(("http://", "https://")):
             raise ValueError(f"Invalid or unsupported URL scheme: {export}")
         log(f"Fetching recipients from URL: {export}")
-        with urllib.request.urlopen(export, timeout=30) as resp:
+        with urllib.request.urlopen(export, timeout=30) as resp:  # nosec B310
             text = resp.read().decode("utf-8", "replace")
         return parse_recipients(text.splitlines())
     with open(path, newline="", encoding="utf-8") as f:

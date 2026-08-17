@@ -114,6 +114,8 @@ def load_recipients(path=None, url=None):
     if url:
         import urllib.request
         export = sheet_to_csv_url(url)
+        if not export.startswith(("http://", "https://")):
+            raise ValueError(f"Invalid or unsupported URL scheme: {export}")
         log(f"Fetching recipients from URL: {export}")
         with urllib.request.urlopen(export, timeout=30) as resp:
             text = resp.read().decode("utf-8", "replace")

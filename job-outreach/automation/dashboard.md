@@ -1,6 +1,6 @@
 # Job Dashboard — updated 2026-08-18
 
-- New added today: **2**  |  Total tracked: **6**
+- New added today: **1**  |  Total tracked: **7**
 - Walk-ins available: **2**
 
 ## Top 10 Matches
@@ -11,6 +11,7 @@
 | 15 | Neuland Laboratories Limited | Executive | Hyderabad | [open](https://www.pharmatutor.org/content/august-2026/hiring-for-production-quality-control-and-assurance-at-neuland) |
 | 15 | PGIMER | Project Scientist-I | Chandigarh | [open](https://www.pharmatutor.org/content/august-2026/research-recruitment-for-pharma-life-sciences-biotechnology-candidates-at-pgimer) |
 | 15 | HLL Lifecare Limited | Senior Production Assistant (Pharma) | Kanagala Factory, Kanagala – 591 225, Belagavi (Dist.) Karnataka | [open](https://www.pharmatutor.org/content/august-2026/hll-lifecare-requires-pharma-production-assistant) |
+| 15 | HLL Lifecare Limited | Senior Production Assistant (Pharma) | Kanagala Factory, Kanagala – 591 225, Belagavi, Karnataka | [open](https://www.pharmatutor.org/content/august-2026/hll-lifecare-requires-pharma-production-assistant) |
 | 10 | Amaris Clinical | Bioanalytical QC | Chengalpattu, Tamil Nadu | [open](https://www.pharmatutor.org/content/august-2026/amaris-clinical-hiring-for-bioanalytical-qc) |
 | 10 | NOT VERIFIED | Pharmacist (ART) | District Panipat, Haryana | [open](https://www.pharmatutor.org/content/august-2026/opportunity-for-pharmacist-under-state-aids-control-programme) |
 

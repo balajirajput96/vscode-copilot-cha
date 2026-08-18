@@ -11,3 +11,8 @@
 **Vulnerability:** The `/predict` endpoint in FastAPI accepted an unbounded list of floats (`List[float]`) which were immediately allocated into a NumPy array. An attacker could send a massive payload, leading to rapid resource exhaustion, memory out-of-bounds, and a Denial of Service.
 **Learning:** Pydantic models in FastAPI endpoints do not enforce default length limits on array/list types. It is a common oversight to leave these unbounded.
 **Prevention:** Always use `pydantic.Field` with a `max_length` constraint for array or list inputs in API endpoints to bound resource allocation.
+
+## 2026-08-16 - Replace Weak Hash Function (SHA-1)
+**Vulnerability:** The automation scripts (`run.py` and `run_repo.py`) used `hashlib.sha1()` to generate deduplication keys, which triggered Bandit High-Severity issue B324. SHA-1 is cryptographically weak and prone to collision attacks.
+**Learning:** Even for non-cryptographic deduplication, it is best practice to use stronger hashes like SHA-256 to avoid security scanning warnings and reduce the risk of accidental collisions.
+**Prevention:** Upgraded `hashlib.sha1` to `hashlib.sha256` in all relevant files.

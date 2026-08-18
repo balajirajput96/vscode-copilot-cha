@@ -73,10 +73,14 @@ app.use(express.static(clientBuildPath));
  * @param {object} req - The Express request object.
  * @param {object} res - The Express response object.
  */
-app.get('*', (req, res) => {
+app.get('/{*splat}', (req, res) => {
   res.sendFile(path.join(clientBuildPath, 'index.html'));
 });
 
-app.listen(port, () => {
-  console.log(`Server listening at http://localhost:${port}`);
-});
+if (require.main === module) {
+  app.listen(port, () => {
+    console.log(`Server listening at http://localhost:${port}`);
+  });
+}
+
+module.exports = app;

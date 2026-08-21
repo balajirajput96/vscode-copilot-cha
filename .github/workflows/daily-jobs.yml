@@ -28,7 +28,22 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt
 
+      - name: Check scan credential
+        id: scan-gate
+        env:
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+        run: |
+          set -euo pipefail
+          if [ -n "$OPENROUTER_API_KEY" ]; then
+            echo "available=true" >> "$GITHUB_OUTPUT"
+            echo "LLM credential is configured; running the scan." >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "available=false" >> "$GITHUB_OUTPUT"
+            echo "OPENROUTER_API_KEY is not configured; scan skipped without changing tracked results." >> "$GITHUB_STEP_SUMMARY"
+          fi
+
       - name: Run daily scan (fetch -> extract -> score -> draft -> dashboard)
+        if: steps.scan-gate.outputs.available == 'true'
         env:
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
           LLM_MODEL: openai/gpt-4o-mini
@@ -36,6 +51,7 @@ jobs:
         run: python run_repo.py
 
       - name: Commit results
+        if: steps.scan-gate.outputs.available == 'true'
         run: |
           set -euo pipefail
           artifacts_dir="$(mktemp -d)"

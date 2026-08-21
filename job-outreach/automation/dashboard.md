@@ -1,6 +1,6 @@
 # Job Dashboard — updated 2026-08-21
 
-- New added today: **2**  |  Total tracked: **16**
+- New added today: **1**  |  Total tracked: **17**
 - Walk-ins available: **8**
 
 ## Top 10 Matches

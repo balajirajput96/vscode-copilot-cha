@@ -16,3 +16,8 @@
 **Vulnerability:** The automation scripts (`run.py` and `run_repo.py`) used `hashlib.sha1()` to generate deduplication keys, which triggered Bandit High-Severity issue B324. SHA-1 is cryptographically weak and prone to collision attacks.
 **Learning:** Even for non-cryptographic deduplication, it is best practice to use stronger hashes like SHA-256 to avoid security scanning warnings and reduce the risk of accidental collisions.
 **Prevention:** Upgraded `hashlib.sha1` to `hashlib.sha256` in all relevant files.
+
+## 2026-08-22 - Missing Timeouts in External API Requests
+**Vulnerability:** API test scripts and outreach scripts were making HTTP requests using the `requests` library without specifying a `timeout`. If the remote server hangs or is extremely slow, these operations would block indefinitely, potentially causing resource exhaustion or unexpected pipeline hangs.
+**Learning:** The `requests` library in Python does not enforce a default timeout. It relies entirely on the underlying socket configuration, which often means blocking forever.
+**Prevention:** Always specify a `timeout` parameter (e.g., `timeout=10` for fast endpoints, `timeout=45` or higher for AI completions) in all `requests.get()`, `requests.post()`, and related HTTP calls.

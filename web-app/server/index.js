@@ -4,6 +4,15 @@ const path = require('path');
 const app = express();
 const port = process.env.PORT || 3001;
 
+app.disable('x-powered-by'); // Security: Disable X-Powered-By header to prevent leaking server details
+
+app.use((req, res, next) => {
+  res.setHeader('X-Content-Type-Options', 'nosniff'); // Security: Prevent MIME sniffing
+  res.setHeader('X-Frame-Options', 'DENY'); // Security: Prevent clickjacking
+  res.setHeader('X-XSS-Protection', '1; mode=block'); // Security: Enable XSS filtering
+  next();
+});
+
 /**
  * @route GET /api/hello
  * @description A simple test endpoint to ensure the server is running.

@@ -197,11 +197,12 @@ def build_fresher_story() -> List[Flowable]:
     story.append(
         Paragraph(
             "Goal-oriented and detail-focused Biotechnology graduate with demonstrated academic excellence "
-            "and foundational competence in cGMP/GDP compliance, wet-lab analytical techniques, and computational pipelines. "
+            "and practical foundational training in pharmaceutical manufacturing, analytical QC, and cGMP compliance. "
             "Recipient of the <b>Best Research Project Award (2024)</b> and <b>Dean's List</b> distinction. Practical exposure "
-            "encompasses genomic data workflows (Biotecnika), GLP microbiology & PCR testing (Gujarat Biotech Innovations), "
-            "and industrial exposure in Oral Solid Dosage manufacturing. Proactive learner seeking an entry-level position as "
-            "<b>Quality Assurance (QA) Trainee</b>, <b>IPQA Officer</b>, or <b>Quality Control (QC) Chemist</b> in Gujarat's pharmaceutical sector. "
+            "includes <b>2-Month Industrial Training in Oral Solid Dosage (Tablets) & QA/QC</b> at Elysium Pharmaceuticals Ltd., "
+            "genomic data analysis workflows at Biotecnika, and GLP microbiology assays at Gujarat Biotech Innovations. "
+            "Eager to contribute rigorous analytical skills and standard-operating-procedure discipline as an entry-level "
+            "<b>Quality Assurance (QA) Trainee</b>, <b>IPQA Officer</b>, or <b>Quality Control (QC) Chemist</b>. "
             "Available to join immediately.",
             S["body"],
         )
@@ -212,19 +213,19 @@ def build_fresher_story() -> List[Flowable]:
     story.append(heading("Core Competencies & Foundational Knowledge"))
     comp_l = [
         "• cGMP, GDP & GLP Principles",
-        "• SOP Drafting & Document Lifecycle",
-        "• In-Process Quality Checks (IPQA)",
+        "• Tablet Manufacturing & IPQA Checks",
+        "• Quality Control (QC) Wet Analysis",
         "• Good Documentation Practices (ALCOA+)",
-        "• 21 CFR Part 11 & Schedule M Awareness",
-        "• Label Reconciliation & Inspection",
+        "• Dissolution, Friability & Hardness Testing",
+        "• SOP Drafting & Document Lifecycle",
     ]
     comp_r = [
-        "• Deviation & CAPA Basics",
-        "• BMR / BPR Review Protocols",
-        "• HPLC & Spectrophotometry Concepts",
+        "• Analytical Instrumentation (HPLC, UV-Vis)",
         "• Microbial Testing & Aseptic Culture",
+        "• BMR / BPR Review Fundamentals",
+        "• Deviation & CAPA Problem-Solving",
         "• Quality Management System (QMS)",
-        "• Root Cause Analysis (5-Why, Fishbone)",
+        "• 21 CFR Part 11 & Schedule M Awareness",
     ]
     c_table = Table(
         [[Paragraph(l, S["small"]), Paragraph(r, S["small"])] for l, r in zip(comp_l, comp_r)],
@@ -287,13 +288,13 @@ def build_fresher_story() -> List[Flowable]:
 
     story.extend(
         exp_block(
-            "Industrial QA Trainee / Apprentice",
+            "Industrial Trainee — QA & QC (Oral Solid Dosage - Tablets)",
             "Elysium Pharmaceuticals Ltd., Vadodara",
-            "Mar 2024 – Mar 2026",
+            "2 Months (Industrial Training)",
             [
-                "Received hands-on industrial training in Oral Solid Dosage (tablets) manufacturing under strict cGMP and Schedule M standards.",
-                "Assisted IPQA officers in line clearance, physical parameter checks (hardness, friability, disintegration), and BMR/BPR log verification.",
-                "Observed and supported SOP authoring, deviation tracking, and preparation of documentation packages for CDSCO/WHO-GMP audit readiness.",
+                "Completed 2-month industrial training focused on Oral Solid Dosage (tablet manufacturing) and Quality Control (QC) & Quality Assurance (QA) workflows under cGMP and Schedule M guidelines.",
+                "Gained practical QC laboratory exposure: observed raw material and finished product testing, dissolution and disintegration profiling, UV-Vis spectrophotometry assays, and GLP reagent standardization.",
+                "Assisted IPQA officers in line clearance, physical in-process parameter checks (weight variation, thickness, hardness, friability), and BMR/BPR log verification.",
             ],
         )
     )
@@ -344,7 +345,7 @@ def build_fresher_story() -> List[Flowable]:
         bullets(
             [
                 "<b>Quality & Regulatory:</b> cGMP, GDP, GLP, Schedule M, SOP Drafting, BMR / BPR Verification, Deviation & CAPA Basics, Change Control Awareness, Data Integrity (ALCOA+), 21 CFR Part 11, CDSCO & WHO-GMP Guidelines.",
-                "<b>Laboratory & Analytical:</b> HPLC (Fundamentals), PCR / RT-PCR, UV-Vis Spectrophotometry, Agarose Gel Electrophoresis, Microbial & Aseptic Culture, Sterility Testing, Disintegration & Friability, Autoclave, LAF.",
+                "<b>Laboratory & Analytical (QC/QA):</b> HPLC (Fundamentals), UV-Vis Spectrophotometry, Dissolution & Disintegration Testing, Friability, Hardness, PCR / RT-PCR, Agarose Gel Electrophoresis, Microbial & Aseptic Culture, Sterility Testing, Autoclave, LAF.",
                 "<b>Bioinformatics & Computation:</b> Python (Biopython, Pandas, NumPy), R Basics, BLAST, ClustalW, NCBI GenBank, UniProt, AutoDock Vina, SWISS-MODEL, PyMOL.",
                 "<b>Software & Digital Tools:</b> MS Office Suite (Advanced Excel, Word, PowerPoint), SPSS, MATLAB (Basic), Git & GitHub, TrackWise (Basics), Google Workspace.",
             ],
@@ -397,8 +398,8 @@ def build_fresher_story() -> List[Flowable]:
     )
     story.append(Spacer(1, 2))
 
-    # Personal Dossier & Declaration
-    story.append(heading("Personal Dossier & Declaration"))
+    # Personal Details & Declaration
+    story.append(heading("Personal Details & Declaration"))
     story.append(Paragraph("<b>Languages Known:</b> English (Fluent), Hindi (Fluent), Gujarati (Native)", S["small"]))
     story.append(Spacer(1, 1))
     story.append(Paragraph("<b>Details:</b> Date of Birth: 20 June 2001 | Marital Status: Single | Nationality: Indian | Availability: Immediate Joiner", S["small"]))

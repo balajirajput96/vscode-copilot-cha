@@ -1,475 +1,660 @@
 #!/usr/bin/env python3
 """
 ======================================================================
- Balaji Dilipsingh Rajput - QA Officer Resume (Single-Column, ATS-Safe)
+ Balaji Dilipsingh Rajput - ATS-Compliant Resume Generator
+ Optimized for Freshers (Biotechnology & Pharma QA/QC) & Experienced
  ---------------------------------------------------------------------
  INSTRUCTIONS:
-   1. Install dependency (one-time):
-          pip install reportlab
-   2. Run this file:
-          python3 resume.py
-   3. Output: "Balaji_Rajput_QA_Officer_Resume.pdf" (same folder)
+   1. Install dependency:
+          pip install reportlab pypdf
+   2. Run script:
+          python3 resume.py --profile fresher     # (Default)
+          python3 resume.py --profile experienced
  ---------------------------------------------------------------------
  DESIGN:
-   - Single column, no tables, no images, no text boxes -> ATS-safe.
-   - All text is real, selectable text -> fully parseable by any ATS.
-   - Standard fonts (Helvetica). Bold section headings with thin rules.
-   - Live mailto / LinkedIn / GitHub hyperlinks in the header.
+   - ATS-safe single/dual-flow layout with standard Helvetica fonts.
+   - Clickable mailto / tel / LinkedIn / GitHub hyperlinks in header.
+   - Two-pass NumberedCanvas for dynamic page numbering ('Page X of Y').
+   - Strict 2-page pagination budget.
 ======================================================================
 """
+
+from __future__ import annotations
+
+import argparse
+import sys
+from pathlib import Path
+from typing import Any, Dict, List, Tuple
 
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.units import mm
 from reportlab.lib.colors import HexColor
-from reportlab.lib.enums import TA_JUSTIFY, TA_LEFT, TA_CENTER
+from reportlab.lib.enums import TA_JUSTIFY, TA_LEFT, TA_CENTER, TA_RIGHT
 from reportlab.lib.styles import ParagraphStyle
 from reportlab.platypus import (
-    BaseDocTemplate, Frame, PageTemplate, Flowable,
-    Paragraph, Spacer, HRFlowable, KeepTogether, ListFlowable, ListItem,
+    BaseDocTemplate,
+    Frame,
+    PageTemplate,
+    Flowable,
+    Paragraph,
+    Spacer,
+    HRFlowable,
+    KeepTogether,
+    ListFlowable,
+    ListItem,
+    PageBreak,
+    Table,
+    TableStyle,
 )
 from reportlab.pdfbase.pdfmetrics import stringWidth
 from reportlab.pdfgen import canvas
 
 # ---------------------------------------------------------------- palette
-NAVY  = HexColor("#0B2E4F")   # name + section headings
-ACCENT = HexColor("#1E5F8E")  # rules, links
-DARK  = HexColor("#222222")   # body text
-GREY  = HexColor("#555555")   # meta text
-HAIR  = HexColor("#C9D4DC")   # hairlines
-HDRBG = HexColor("#F2F6F9")   # subtle header background tint
+NAVY = HexColor("#0B2E4F")     # Name + Section headings
+ACCENT = HexColor("#1E5F8E")   # Rules, links, subtle markers
+DARK = HexColor("#222222")     # Body text
+GREY = HexColor("#555555")     # Meta text
+HAIR = HexColor("#C9D4DC")     # Divider lines
+HDRBG = HexColor("#F2F6F9")    # Header background tint
 
-OUT = "Balaji_Rajput_QA_Officer_Resume.pdf"
 PW, PH = A4
-ML = MR = 16 * mm             # left / right margins (~0.63")
-MT = 14 * mm                  # top margin
-MB = 14 * mm                  # bottom margin
-CW = PW - ML - MR             # content width
+ML = MR = 14 * mm
+MT = 12 * mm
+MB = 12 * mm
+CW = PW - ML - MR
 BUL = "\u2022"
-EN  = "\u2013"
+EN = "\u2013"
 
-# ---------------------------------------------------------------- contact
-NAME     = "BALAJI DILIPSINGH RAJPUT"
-TITLE    = "Quality Assurance Officer  |  IPQA Officer  |  Pharmaceutical QA"
-PHONE    = "+91 87808 61044"
-EMAIL    = "balajirajput966@gmail.com"
+# ---------------------------------------------------------------- contact details
+NAME = "BALAJI DILIPSINGH RAJPUT"
+PHONE = "+91 87808 61044"
+PHONE_CLEAN = "+918780861044"
+EMAIL = "balajirajput966@gmail.com"
 LOCATION = "Vadodara, Gujarat 390010, India"
 LINKEDIN = "linkedin.com/in/balaji-rajput-483a86194"
-GITHUB   = "github.com/balajirajput96"
+LINKEDIN_URL = "https://linkedin.com/in/balaji-rajput-483a86194"
+GITHUB = "github.com/balajirajput96"
+GITHUB_URL = "https://github.com/balajirajput96"
 
-# ---------------------------------------------------------------- styles
-def st(name, **kw):
-    base = dict(fontName="Helvetica", fontSize=9.5, leading=13,
-                textColor=DARK, spaceAfter=0)
+
+# ---------------------------------------------------------------- typography styles
+def st(name: str, **kw: Any) -> ParagraphStyle:
+    base = dict(fontName="Helvetica", fontSize=8.5, leading=11.5, textColor=DARK, spaceAfter=0)
     base.update(kw)
     return ParagraphStyle(name, **base)
 
+
 S = {
-    "name":   st("name", fontName="Helvetica-Bold", fontSize=20, leading=23,
-                 textColor=NAVY, alignment=TA_CENTER),
-    "title":  st("title", fontName="Helvetica-Bold", fontSize=10, leading=13,
-                 textColor=ACCENT, alignment=TA_CENTER),
-    "contact": st("contact", fontSize=8.6, leading=12, textColor=DARK,
-                  alignment=TA_CENTER),
-    "sect":   st("sect", fontName="Helvetica-Bold", fontSize=10.5, leading=12,
-                 textColor=NAVY, spaceBefore=8),
-    "body":   st("body", fontSize=8.9, leading=11.8, alignment=TA_JUSTIFY,
-                 spaceAfter=1),
-    "job":    st("job", fontName="Helvetica-Bold", fontSize=9.7, leading=12,
-                 textColor=NAVY, spaceBefore=3),
-    "meta":   st("meta", fontName="Helvetica-Oblique", fontSize=8.6,
-                 leading=11, textColor=GREY, spaceAfter=1),
-    "bullet": st("bullet", fontSize=8.7, leading=11.8, alignment=TA_JUSTIFY),
-    "subh":   st("subh", fontName="Helvetica-Bold", fontSize=9.2, leading=11.8,
-                 textColor=DARK),
-    "small":  st("small", fontSize=8.7, leading=11.8, textColor=DARK),
-    "comp":   st("comp", fontSize=8.7, leading=14, textColor=DARK),
+    "name": st("name", fontName="Helvetica-Bold", fontSize=20, leading=22, textColor=NAVY, alignment=TA_CENTER),
+    "title": st("title", fontName="Helvetica-Bold", fontSize=9.5, leading=12, textColor=ACCENT, alignment=TA_CENTER),
+    "contact": st("contact", fontSize=8.2, leading=11.5, textColor=DARK, alignment=TA_CENTER),
+    "sect": st("sect", fontName="Helvetica-Bold", fontSize=10.2, leading=12.5, textColor=NAVY, spaceBefore=4),
+    "body": st("body", fontSize=8.5, leading=11.5, alignment=TA_JUSTIFY, spaceAfter=1),
+    "job_left": st("job_left", fontName="Helvetica-Bold", fontSize=9.0, leading=11.5, textColor=NAVY),
+    "job_right": st("job_right", fontName="Helvetica-Bold", fontSize=8.4, leading=11.5, textColor=ACCENT, alignment=TA_RIGHT),
+    "meta": st("meta", fontName="Helvetica-Oblique", fontSize=8.2, leading=10.5, textColor=GREY, spaceAfter=1),
+    "bullet": st("bullet", fontSize=8.2, leading=10.8, alignment=TA_JUSTIFY),
+    "small": st("small", fontSize=8.2, leading=10.8, textColor=DARK),
+    "decl": st("decl", fontName="Helvetica-Oblique", fontSize=7.8, leading=10.2, textColor=DARK),
 }
 
-def rule(space_after=4):
-    return HRFlowable(width="100%", thickness=0.9, color=ACCENT,
-                      spaceBefore=1, spaceAfter=space_after)
 
-class Bookmark(Flowable):
-    """Zero-height flowable that registers a PDF outline (bookmark) entry at its
-    position, so the finished PDF has a navigable section tree in any reader.
-    Invisible and text-free -> no impact on layout or ATS parsing.
+def rule(space_after: float = 3) -> HRFlowable:
+    return HRFlowable(width="100%", thickness=1.0, color=ACCENT, spaceBefore=1, spaceAfter=space_after)
 
-    NOTE: actual bookmark creation is *deferred* to the second pass in
-    NumberedCanvas.save(). With the two-pass NumberedCanvas the first pass never
-    emits real pages, so calling bookmarkPage() here would bind every entry to
-    page 1. Instead we just record (page, key, title) and let the canvas emit
-    each bookmark while the matching page is actually being written."""
-    def __init__(self, title, key):
-        Flowable.__init__(self)
-        self.title, self.key = title, key
-        self.width = self.height = 0
 
-    def wrap(self, aw, ah):
-        return (0, 0)
-
-    def draw(self):
-        reg = getattr(self.canv, "_deferred_bookmarks", None)
-        if reg is None:
-            reg = self.canv._deferred_bookmarks = []
-        reg.append((self.canv._pageNumber, self.key, self.title))
-
-def heading(title):
-    """Professional section heading: a small accent marker + uppercase title,
-    underlined by a thin accent rule. keepWithNext prevents page-bottom orphans.
-    Also drops a PDF bookmark so the document has a navigable outline."""
+def heading(title: str) -> KeepTogether:
     key = "sec_" + "".join(ch for ch in title.lower() if ch.isalnum())
-    para = Paragraph(
-        f'<font color="#1E5F8E">\u25AC</font>&nbsp;&nbsp;{title.upper()}', S["sect"])
-    kt = KeepTogether([Bookmark(title, key), para, rule()])
+    para = Paragraph(f"<b>{title.upper()}</b>", S["sect"])
+    kt = KeepTogether([para, rule()])
     kt.keepWithNext = 1
     return kt
 
-def bullets(items, style="bullet", gap=2):
+
+def bullets(items: List[str], style: str = "bullet", gap: float = 1.0) -> ListFlowable:
     return ListFlowable(
-        [ListItem(Paragraph(t, S[style]), leftIndent=12,
-                  value=BUL, spaceAfter=gap) for t in items],
-        bulletType="bullet", bulletColor=ACCENT, bulletFontSize=8,
-        leftIndent=12, bulletOffsetY=0.5,
+        [ListItem(Paragraph(t, S[style]), leftIndent=10, value=BUL, spaceAfter=gap) for t in items],
+        bulletType="bullet",
+        bulletColor=ACCENT,
+        bulletFontSize=7.5,
+        leftIndent=10,
+        bulletOffsetY=0.5,
     )
 
-class HeaderRow(Flowable):
-    """Single-line role/title on the left, date right-aligned to the margin.
-    Pure text (selectable, correct reading order) -> stays ATS-safe, no tables.
-    If the left text would collide with the date it auto-shrinks to fit."""
-    def __init__(self, left, right, lfont="Helvetica-Bold", lsize=9.7,
-                 lcolor=NAVY, rfont="Helvetica-Oblique", rsize=9.0,
-                 rcolor=GREY, leading=13, space_before=3, space_after=1):
-        Flowable.__init__(self)
-        self.left, self.right = left, right
-        self.lfont, self.lsize, self.lcolor = lfont, lsize, lcolor
-        self.rfont, self.rsize, self.rcolor = rfont, rsize, rcolor
-        self.height = leading
-        self.spaceBefore = space_before
-        self.spaceAfter = space_after
-        self._w = CW
-
-    def wrap(self, availWidth, availHeight):
-        self._w = availWidth
-        return (availWidth, self.height)
-
-    def draw(self):
-        c = self.canv
-        y = self.height - self.lsize
-        rw = stringWidth(self.right, self.rfont, self.rsize)
-        # shrink left font only if it would overlap the right-aligned date
-        lsize = self.lsize
-        while (stringWidth(self.left, self.lfont, lsize)
-               > self._w - rw - 10) and lsize > 7.5:
-            lsize -= 0.2
-        c.setFont(self.lfont, lsize); c.setFillColor(self.lcolor)
-        c.drawString(0, y, self.left)
-        c.setFont(self.rfont, self.rsize); c.setFillColor(self.rcolor)
-        c.drawRightString(self._w, y, self.right)
 
 class NumberedCanvas(canvas.Canvas):
-    """Two-pass canvas: buffers every page, then draws the footer with the
-    final 'Page X of Y' once the total page count is known."""
-    def __init__(self, *args, **kwargs):
-        canvas.Canvas.__init__(self, *args, **kwargs)
-        self._saved_page_states = []
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        super().__init__(*args, **kwargs)
+        self._saved_page_states: List[Dict[str, Any]] = []
 
-    def showPage(self):
+    def showPage(self) -> None:
         self._saved_page_states.append(dict(self.__dict__))
         self._startPage()
 
-    def save(self):
+    def save(self) -> None:
         total = len(self._saved_page_states)
-        # group deferred bookmarks by the page they were recorded on
-        by_page = {}
-        for pno, key, title in getattr(self, "_deferred_bookmarks", []):
-            by_page.setdefault(pno, []).append((key, title))
-        for idx, state in enumerate(self._saved_page_states, start=1):
+        for state in self._saved_page_states:
             self.__dict__.update(state)
-            self._draw_footer(total)
-            # emit bookmarks now, while this page is the one being written,
-            # so each outline entry resolves to the correct page
-            for key, title in by_page.get(idx, []):
-                self.bookmarkPage(key)
-                self.addOutlineEntry(title, key, level=0, closed=False)
-            canvas.Canvas.showPage(self)
-        canvas.Canvas.save(self)
+            self._draw_decorations(total)
+            super().showPage()
+        super().save()
 
-    def _draw_footer(self, total):
+    def _draw_decorations(self, total: int) -> None:
         self.saveState()
-        self.setStrokeColor(HAIR); self.setLineWidth(0.6)
+        # Top rule on page 2+
+        if self._pageNumber > 1:
+            self.setStrokeColor(ACCENT)
+            self.setLineWidth(1.0)
+            self.line(ML, PH - 9 * mm, PW - MR, PH - 9 * mm)
+
+            self.setFont("Helvetica-Bold", 7.5)
+            self.setFillColor(NAVY)
+            self.drawString(ML, PH - 8 * mm, NAME)
+
+            self.setFont("Helvetica", 7.5)
+            self.setFillColor(GREY)
+            self.drawRightString(PW - MR, PH - 8 * mm, "Curriculum Vitae | Balaji Dilipsingh Rajput")
+
+        # Footer
+        self.setStrokeColor(HAIR)
+        self.setLineWidth(0.6)
         self.line(ML, 9 * mm, PW - MR, 9 * mm)
-        self.setFont("Helvetica", 7.6); self.setFillColor(GREY)
-        self.drawString(ML, 5.8 * mm,
-                        "Balaji Dilipsingh Rajput  |  Quality Assurance Officer")
-        self.drawRightString(
-            PW - MR, 5.8 * mm,
-            f"{PHONE}   {BUL}   {EMAIL}   {BUL}   Page {self._pageNumber} of {total}")
+
+        self.setFont("Helvetica", 7.5)
+        self.setFillColor(GREY)
+        self.drawString(ML, 6.0 * mm, f"{NAME}   {BUL}   {PHONE}   {BUL}   {EMAIL}")
+        self.drawRightString(PW - MR, 6.0 * mm, f"Page {self._pageNumber} of {total}")
         self.restoreState()
 
-# ---------------------------------------------------------------- page deco
-def on_page(c, doc):
-    c.saveState()
-    # subtle header background tint (page 1 only, behind name/title/contact)
-    if doc.page == 1:
-        c.setFillColor(HDRBG)
-        c.rect(0, PH - 38 * mm, PW, 34 * mm, fill=1, stroke=0)
-    # top accent band
-    c.setFillColor(NAVY)
-    c.rect(0, PH - 4 * mm, PW, 4 * mm, fill=1, stroke=0)
-    c.restoreState()
 
-# ---------------------------------------------------------------- header flow
-def header_block():
-    contact1 = (f'<a href="tel:+918780861044"><font color="#222222">{PHONE}</font></a>'
-                f' &nbsp;&nbsp;{BUL}&nbsp;&nbsp; '
-                f'<a href="mailto:{EMAIL}"><font color="#1E5F8E"><u>{EMAIL}</u></font></a>'
-                f' &nbsp;&nbsp;{BUL}&nbsp;&nbsp; {LOCATION}')
-    contact2 = (f'<a href="https://{LINKEDIN}"><font color="#1E5F8E"><u>{LINKEDIN}</u></font></a>'
-                f' &nbsp;&nbsp;{BUL}&nbsp;&nbsp; '
-                f'<a href="https://{GITHUB}"><font color="#1E5F8E"><u>{GITHUB}</u></font></a>')
+def header_block(title_text: str) -> List[Flowable]:
+    contact1 = (
+        f"Location: {LOCATION} &nbsp;&nbsp;|&nbsp;&nbsp; "
+        f"Phone: <a href='tel:{PHONE_CLEAN}'><u>{PHONE}</u></a> &nbsp;&nbsp;|&nbsp;&nbsp; "
+        f"Email: <a href='mailto:{EMAIL}'><font color='#1E5F8E'><u>{EMAIL}</u></font></a>"
+    )
+    contact2 = (
+        f"LinkedIn: <a href='{LINKEDIN_URL}'><font color='#1E5F8E'><u>{LINKEDIN}</u></font></a> &nbsp;&nbsp;|&nbsp;&nbsp; "
+        f"GitHub: <a href='{GITHUB_URL}'><font color='#1E5F8E'><u>{GITHUB}</u></font></a>"
+    )
     return [
         Paragraph(NAME, S["name"]),
-        HRFlowable(width="38%", thickness=2, color=ACCENT,
-                   spaceBefore=3, spaceAfter=4, hAlign="CENTER"),
-        Paragraph(TITLE, S["title"]),
-        Spacer(1, 4),
+        Paragraph(title_text, S["title"]),
+        Spacer(1, 1),
         Paragraph(contact1, S["contact"]),
         Paragraph(contact2, S["contact"]),
-        HRFlowable(width="100%", thickness=1.3, color=NAVY,
-                   spaceBefore=6, spaceAfter=2),
+        HRFlowable(width="100%", thickness=1.2, color=NAVY, spaceBefore=2, spaceAfter=3),
     ]
 
-# ================================================================ content
-story = []
-story += header_block()
 
-# ---- Professional Summary ----
-story.append(heading("Professional Summary"))
-story.append(Paragraph(
-    "Detail-oriented and compliance-focused Quality Assurance Officer with 2+ years "
-    "of hands-on experience in Oral Solid Dosage (tablet) manufacturing at Elysium "
-    "Pharmaceuticals Ltd., Vadodara, working within cGMP, GDP and Schedule M "
-    "frameworks. Skilled in SOP authoring, deviation management, CAPA, BMR/BPR "
-    "review, change control, in-process quality checks (IPQA) and OOS/OOT "
-    "investigation support across a structured QMS. Experienced in internal audits, "
-    "documentation control and data integrity (ALCOA+), with proven audit readiness "
-    "for CDSCO and WHO-GMP inspections. A meticulous team player committed to product "
-    "quality, patient safety and regulatory compliance. Seeking QA Officer / QA "
-    "Executive / IPQA / Documentation Officer roles across Gujarat - available to "
-    "join immediately.",
-    S["body"]))
+def build_fresher_story() -> List[Flowable]:
+    story: List[Flowable] = []
+    title_text = "Biotechnology Graduate | Entry-Level QA/QC Trainee | Computational & Wet-Lab Analyst"
+    story.extend(header_block(title_text))
 
-# ---- Core Competencies ----
-story.append(heading("Core Competencies"))
-comp = [
-    "cGMP / GDP / GLP & Schedule M Compliance", "SOP Writing & Periodic Review",
-    "Batch Record Review (BMR / BPR)", "Deviation Management & CAPA",
-    "Change Control Management", "OOS / OOT Investigation Support",
-    "In-Process Quality Assurance (IPQA)", "Internal Audit & Self-Inspection",
-    "QMS & Documentation Control", "Data Integrity (ALCOA+) & 21 CFR Part 11",
-    "APQR & Stability Documentation", "CDSCO / WHO-GMP Audit Readiness",
-    "ICH Guidelines (Q8 / Q9 / Q10)", "Vendor Qualification Support",
-]
-comp_text = (" &nbsp;&nbsp;<font color='#1E5F8E'>" + BUL + "</font>&nbsp;&nbsp; ").join(comp)
-story.append(Paragraph(
-    "<font color='#1E5F8E'>" + BUL + "</font>&nbsp;&nbsp; " + comp_text, S["comp"]))
+    # Summary
+    story.append(heading("Career Objective & Professional Summary"))
+    story.append(
+        Paragraph(
+            "Goal-oriented and detail-focused Biotechnology graduate with demonstrated academic excellence "
+            "and foundational competence in cGMP/GDP compliance, wet-lab analytical techniques, and computational pipelines. "
+            "Recipient of the <b>Best Research Project Award (2024)</b> and <b>Dean's List</b> distinction. Practical exposure "
+            "encompasses genomic data workflows (Biotecnika), GLP microbiology & PCR testing (Gujarat Biotech Innovations), "
+            "and industrial exposure in Oral Solid Dosage manufacturing. Proactive learner seeking an entry-level position as "
+            "<b>Quality Assurance (QA) Trainee</b>, <b>IPQA Officer</b>, or <b>Quality Control (QC) Chemist</b> in Gujarat's pharmaceutical sector. "
+            "Available to join immediately.",
+            S["body"],
+        )
+    )
+    story.append(Spacer(1, 2))
 
-# ---- Professional Experience ----
-story.append(heading("Professional Experience"))
-exp_head = KeepTogether([
-    HeaderRow("Quality Assurance Officer / IPQA Officer",
-              "Mar 2024 " + EN + " Mar 2026   (2 Years)"),
-    Paragraph("<b><font color='#1E5F8E'>Elysium Pharmaceuticals Ltd.</font></b>, "
-              "Dabhasa, Vadodara, Gujarat  "
-              f"{BUL}  Department: Quality Assurance", S["meta"]),
-])
-story.append(exp_head)
-story.append(bullets([
-    "Authored, reviewed and revised Standard Operating Procedures (SOPs) and "
-    "managed periodic review schedules to maintain cGMP, GDP and Schedule M "
-    "compliance across Oral Solid Dosage operations.",
-    "Reviewed, verified and approved Batch Manufacturing Records (BMR) and Batch "
-    "Packaging Records (BPR), including reconciliation, issuance logs and yield "
-    "calculations, resolving discrepancies prior to batch release.",
-    "Performed line clearance and in-process quality checks (IPQA) during "
-    "granulation, compression, coating and packing - weight variation, hardness, "
-    "friability, thickness and disintegration time as per BMR specifications.",
-    "Identified, documented and investigated deviations using structured "
-    "root-cause analysis (5-Why, Fishbone); implemented CAPA and tracked "
-    "corrective / preventive actions to timely closure.",
-    "Initiated, evaluated and closed Change Control records with cross-functional "
-    "teams, performing impact assessment and post-change effectiveness verification "
-    "for equipment, process and documentation changes.",
-    "Supported OOS (Out of Specification) and OOT investigations in coordination "
-    "with Quality Control per ICH Q10 and 21 CFR Part 211 guidance, contributing "
-    "to batch review and release decisions.",
-    "Conducted internal GMP audits and self-inspections across production, "
-    "warehouse, HVAC/AHU and utility areas; documented observations and tracked "
-    "corrective-action closure.",
-    "Maintained document control, Good Documentation Practices (GDP) and data "
-    "integrity (ALCOA+); compiled Annual Product Quality Review (APQR) inputs and "
-    "supported the stability program through scheduled data review.",
-    "Prepared documentation packages and provided audit readiness support for "
-    "CDSCO and WHO-GMP inspections, including master files, validation summaries "
-    "and change histories.",
-    "Coordinated and delivered periodic GMP / GDP training for production staff "
-    "and maintained up-to-date training records for compliance.",
-]))
+    # Core Competencies
+    story.append(heading("Core Competencies & Foundational Knowledge"))
+    comp_l = [
+        "• cGMP, GDP & GLP Principles",
+        "• SOP Drafting & Document Lifecycle",
+        "• In-Process Quality Checks (IPQA)",
+        "• Good Documentation Practices (ALCOA+)",
+        "• 21 CFR Part 11 & Schedule M Awareness",
+        "• Label Reconciliation & Inspection",
+    ]
+    comp_r = [
+        "• Deviation & CAPA Basics",
+        "• BMR / BPR Review Protocols",
+        "• HPLC & Spectrophotometry Concepts",
+        "• Microbial Testing & Aseptic Culture",
+        "• Quality Management System (QMS)",
+        "• Root Cause Analysis (5-Why, Fishbone)",
+    ]
+    c_table = Table(
+        [[Paragraph(l, S["small"]), Paragraph(r, S["small"])] for l, r in zip(comp_l, comp_r)],
+        colWidths=[CW / 2.0, CW / 2.0],
+    )
+    c_table.setStyle(
+        TableStyle(
+            [
+                ("VALIGN", (0, 0), (-1, -1), "TOP"),
+                ("LEFTPADDING", (0, 0), (-1, -1), 0),
+                ("RIGHTPADDING", (0, 0), (-1, -1), 4),
+                ("TOPPADDING", (0, 0), (-1, -1), 1),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 1),
+            ]
+        )
+    )
+    story.append(c_table)
+    story.append(Spacer(1, 2))
 
-# ---- Education ----
-story.append(heading("Education"))
-story.append(KeepTogether([
-    HeaderRow("Diploma in Biotechnology",
-              "2021 " + EN + " 2025    CGPA: 6.7 / 10"),
-    Paragraph("Parul Institute of Technology & Engineering, Vadodara - "
-              "Gujarat Technological University (GTU)", S["meta"]),
-]))
-story.append(bullets([
-    "Honours: Dean's List for Academic Excellence (2024" + EN + "25); "
-    "Best Research Project Award (Bioethanol Production); "
-    "Top 10 ranking in Molecular Biology coursework.",
-    "Key Subjects: Molecular Biology, Biochemistry, Microbiology, Bioprocess "
-    "Technology, Immunology, Fermentation Technology.",
-], gap=2))
+    # Education
+    story.append(heading("Education"))
+    edu_tbl = Table(
+        [
+            [
+                Paragraph("<b>Diploma in Biotechnology</b>", S["job_left"]),
+                Paragraph("2021 – 2025", S["job_right"]),
+            ]
+        ],
+        colWidths=[CW * 0.75, CW * 0.25],
+    )
+    edu_tbl.setStyle(TableStyle([("LEFTPADDING", (0, 0), (-1, -1), 0), ("TOPPADDING", (0, 0), (-1, -1), 0)]))
+    story.append(edu_tbl)
+    story.append(
+        Paragraph(
+            "Parul Institute of Technology & Engineering, Gujarat Technological University (GTU), Vadodara",
+            S["meta"],
+        )
+    )
+    story.append(
+        bullets(
+            [
+                "<b>Honors / Performance:</b> CGPA: 6.7 / 10 | Dean's List for Academic Excellence (2024–2025)",
+                "Key Subjects: Molecular Biology, Microbiology, Bioprocess Technology, Biochemistry, Immunology, Fermentation Technology, QC & QA.",
+            ],
+            gap=1,
+        )
+    )
+    story.append(Spacer(1, 2))
 
-# ---- Internship Experience ----
-story.append(heading("Internship Experience"))
-story.append(KeepTogether([
-    HeaderRow("Bioinformatics Intern " + EN + " Biotecnika (Remote)",
-              "2024   " + BUL + "   3 Months",
-              lfont="Helvetica-Bold", lsize=9.2, lcolor=DARK),
-]))
-story.append(bullets([
-    "Built Python / Biopython pipelines for genomic data analysis; analysed 500+ "
-    "DNA / protein sequences via BLAST and ClustalW.",
-    "Reduced manual curation time by 40% through pipeline automation.",
-], gap=2))
-story.append(Spacer(1, 3))
-story.append(KeepTogether([
-    HeaderRow("Laboratory Research Intern " + EN + " Gujarat Biotech Innovations",
-              "2023   " + BUL + "   2 Months",
-              lfont="Helvetica-Bold", lsize=9.2, lcolor=DARK),
-]))
-story.append(bullets([
-    "Executed PCR, gel electrophoresis and microbial culture workflows; processed "
-    "80+ samples/week with 95% accuracy.",
-    "Authored 3 SOPs under GLP protocols; improved laboratory efficiency by 20%.",
-], gap=2))
+    # Industrial Training & Internships
+    story.append(heading("Industrial Training & Internship Experience"))
 
-# ---- Key Research Projects ----
-story.append(heading("Key Research Projects"))
-story.append(bullets([
-    "<b>Bioethanol Production from Agricultural Waste (2024):</b> Optimised SSF "
-    "process with S. cerevisiae using RSM/DOE; achieved 15% yield improvement "
-    "validated via HPLC and ANOVA (p&lt;0.05). Best Research Project Award.",
-    "<b>Comparative Genomic Analysis of AMR Genes (2024):</b> Analysed 120 "
-    "bacterial genomes (NCBI GenBank) with an automated Python/Biopython BLAST "
-    "pipeline; discovered 8 novel resistance gene variants from 500+ sequences.",
-    "<b>Protein Structure Prediction & Molecular Docking (2023):</b> Modelled 5 "
-    "therapeutic proteins (SWISS-MODEL) and docked 50 ligands (AutoDock Vina); "
-    "identified 3 lead compounds (binding affinity " + EN + "8.0 kcal/mol or lower).",
-    "<b>Microbial Quality Assessment of Dairy Products (2023):</b> Tested 40 "
-    "dairy samples per ISO 4833 with 100% detection accuracy for E. coli and "
-    "Salmonella.",
-]))
+    def exp_block(role: str, comp: str, dur: str, items: List[str]) -> List[Flowable]:
+        tbl = Table(
+            [[Paragraph(f"<b>{role}</b> — {comp}", S["job_left"]), Paragraph(dur, S["job_right"])]],
+            colWidths=[CW * 0.75, CW * 0.25],
+        )
+        tbl.setStyle(TableStyle([("LEFTPADDING", (0, 0), (-1, -1), 0), ("TOPPADDING", (0, 0), (-1, -1), 0)]))
+        return [tbl, Spacer(1, 1), bullets(items, gap=1), Spacer(1, 2)]
 
-# ---- Technical Skills ----
-story.append(heading("Technical Skills"))
-def skill_line(cat, val):
-    return Paragraph(f"<b><font color='#0B2E4F'>{cat}:</font></b> {val}", S["small"])
-story.append(skill_line(
-    "QA / Regulatory",
-    "GMP, cGMP, GDP, GLP, SOP Writing, CAPA, Deviation Management, BMR/BPR Review, "
-    "Change Control, OOS Investigation, QMS, Internal Audit, Vendor Qualification, "
-    "ICH Guidelines, WHO-GMP, CDSCO, 21 CFR Part 11, APQR, Stability Studies, "
-    "Documentation Control, Data Integrity (ALCOA+)"))
-story.append(Spacer(1, 2))
-story.append(skill_line(
-    "Laboratory",
-    "HPLC, PCR (RT-PCR, qPCR), UV-Vis Spectrophotometry, Gel Electrophoresis, "
-    "Microbial & Cell Culture, DNA/RNA Extraction, Microbial Limit Test, Sterility "
-    "Testing, Media Preparation, Autoclave, Laminar Air Flow, Microscopy"))
-story.append(Spacer(1, 2))
-story.append(skill_line(
-    "Bioinformatics",
-    "Python (Biopython, Pandas, NumPy), R (Bioconductor), BLAST, ClustalW, NCBI, "
-    "GenBank, UniProt, AutoDock Vina, SWISS-MODEL, PyMOL"))
-story.append(Spacer(1, 2))
-story.append(skill_line(
-    "Software & Data",
-    "MS Office (Advanced), TrackWise (basic), SAP (basic), SPSS, MATLAB, DOE/RSM, "
-    "ANOVA, Git/GitHub"))
+    story.extend(
+        exp_block(
+            "Industrial QA Trainee / Apprentice",
+            "Elysium Pharmaceuticals Ltd., Vadodara",
+            "Mar 2024 – Mar 2026",
+            [
+                "Received hands-on industrial training in Oral Solid Dosage (tablets) manufacturing under strict cGMP and Schedule M standards.",
+                "Assisted IPQA officers in line clearance, physical parameter checks (hardness, friability, disintegration), and BMR/BPR log verification.",
+                "Observed and supported SOP authoring, deviation tracking, and preparation of documentation packages for CDSCO/WHO-GMP audit readiness.",
+            ],
+        )
+    )
+    story.extend(
+        exp_block(
+            "Bioinformatics Intern",
+            "Biotecnika (Remote)",
+            "2024 (3 Months)",
+            [
+                "Engineered automated Python / Biopython workflows for sequence alignment, screening over 500+ DNA and protein sequences.",
+                "Utilized BLAST, ClustalW, and GenBank annotations to streamline curation workflows, cutting manual processing time by 40%.",
+            ],
+        )
+    )
+    story.extend(
+        exp_block(
+            "Laboratory Research Intern",
+            "Gujarat Biotech Innovations",
+            "2023 (2 Months)",
+            [
+                "Carried out routine laboratory assays: PCR, agarose gel electrophoresis, and microbial culture handling for 80+ samples/week.",
+                "Authored 3 standard operating procedures (SOPs) compliant with GLP standards; elevated laboratory sample workflow efficiency by 20%.",
+            ],
+        )
+    )
 
-# ---- Certifications ----
-story.append(heading("Certifications"))
-story.append(bullets([
-    "Bioinformatics Specialization " + EN + " Coursera / UC San Diego (2024)",
-    "Python for Genomic Data Science " + EN + " Coursera / Johns Hopkins (2024)",
-    "Industrial Biotechnology & GMP Fundamentals " + EN + " NPTEL / IIT Madras (2023)",
-    "Molecular Biology Techniques " + EN + " Udemy (2023)",
-    "Advanced Techniques in Biotechnology " + EN + " Parul University (2025)",
-    "Web Designing " + EN + " ITI Vadodara (2021)  " + BUL +
-    "  Digital Marketing " + EN + " Google Digital Garage",
-], gap=2))
+    # PAGE 2
+    story.append(PageBreak())
 
-# ---- Key Achievements ----
-story.append(heading("Key Achievements"))
-story.append(bullets([
-    "Best Research Project Award (Bioethanol Production) " + EN +
-    " Parul Institute, 2024.",
-    "Dean's List for Academic Excellence, 2024" + EN + "25.",
-    "Top 10 ranking in Molecular Biology coursework.",
-    "Authored 3 GLP SOPs adopted during laboratory internship; improved lab "
-    "efficiency by 20%.",
-    "40% reduction in manual bioinformatics curation time through pipeline "
-    "automation; 8 novel AMR variants identified from 500+ sequences.",
-], gap=2))
+    # Projects
+    story.append(heading("Key Academic & Research Projects"))
+    story.append(
+        bullets(
+            [
+                "<b>Bioethanol Production from Agricultural Waste (2024):</b> Optimized SSF with <i>S. cerevisiae</i> via Response Surface Methodology (RSM/DOE); achieved a <b>15% yield enhancement</b> validated by HPLC (p &lt; 0.05). <b>Awarded Best Research Project – Parul Institute 2024</b>.",
+                "<b>Comparative Genomic Analysis of AMR Genes (2024):</b> Analyzed 120 bacterial genomes from NCBI GenBank using an automated Python/Biopython workflow; identified <b>8 novel Antimicrobial Resistance (AMR) gene variants</b> across 500+ sequence entries.",
+                "<b>Protein Structure Prediction & Molecular Docking (2023):</b> Constructed 3D homology models for 5 therapeutic target proteins via SWISS-MODEL; screened and docked 50 ligands via AutoDock Vina, identifying 3 lead inhibitors (&le; -8.0 kcal/mol).",
+                "<b>Biogenic Synthesis of Silver Nanoparticles (AgNPs) (2023):</b> Synthesized antimicrobial AgNPs via green biogenic route using <i>Pseudomonas spp.</i>; confirmed nanoparticle formation and bactericidal efficacy via UV-Vis Spectrophotometry and zone assays.",
+            ],
+            gap=2,
+        )
+    )
+    story.append(Spacer(1, 2))
 
-# ---- Languages ----
-story.append(heading("Languages"))
-story.append(Paragraph(
-    "English (Fluent) &nbsp;&nbsp;" + BUL + "&nbsp;&nbsp; Hindi (Fluent) "
-    "&nbsp;&nbsp;" + BUL + "&nbsp;&nbsp; Gujarati (Native)", S["small"]))
+    # Skills
+    story.append(heading("Technical & Laboratory Skills"))
+    story.append(
+        bullets(
+            [
+                "<b>Quality & Regulatory:</b> cGMP, GDP, GLP, Schedule M, SOP Drafting, BMR / BPR Verification, Deviation & CAPA Basics, Change Control Awareness, Data Integrity (ALCOA+), 21 CFR Part 11, CDSCO & WHO-GMP Guidelines.",
+                "<b>Laboratory & Analytical:</b> HPLC (Fundamentals), PCR / RT-PCR, UV-Vis Spectrophotometry, Agarose Gel Electrophoresis, Microbial & Aseptic Culture, Sterility Testing, Disintegration & Friability, Autoclave, LAF.",
+                "<b>Bioinformatics & Computation:</b> Python (Biopython, Pandas, NumPy), R Basics, BLAST, ClustalW, NCBI GenBank, UniProt, AutoDock Vina, SWISS-MODEL, PyMOL.",
+                "<b>Software & Digital Tools:</b> MS Office Suite (Advanced Excel, Word, PowerPoint), SPSS, MATLAB (Basic), Git & GitHub, TrackWise (Basics), Google Workspace.",
+            ],
+            gap=1.5,
+        )
+    )
+    story.append(Spacer(1, 2))
 
-# ---- Personal Details + Declaration ----
-story.append(heading("Personal Details"))
-story.append(Paragraph(
-    "Date of Birth: 20 June 2000 &nbsp;&nbsp;" + BUL + "&nbsp;&nbsp; "
-    "Marital Status: Single &nbsp;&nbsp;" + BUL + "&nbsp;&nbsp; Nationality: Indian "
-    "&nbsp;&nbsp;" + BUL + "&nbsp;&nbsp; Availability: Immediate Joiner", S["small"]))
-story.append(Spacer(1, 3))
-story.append(Paragraph(
-    "<i>I hereby declare that the information furnished above is true and correct "
-    "to the best of my knowledge and belief.</i>", S["small"]))
-story.append(Spacer(1, 9))
-story.append(HeaderRow(
-    "Place: Vadodara, Gujarat", "(Balaji Dilipsingh Rajput)",
-    lfont="Helvetica", lsize=8.7, lcolor=DARK,
-    rfont="Helvetica-Bold", rsize=8.7, rcolor=NAVY,
-    space_before=2, space_after=2))
-story.append(HeaderRow(
-    "Date: ____________________", "Signature",
-    lfont="Helvetica", lsize=8.7, lcolor=DARK,
-    rfont="Helvetica-Oblique", rsize=8.3, rcolor=GREY,
-    space_before=2, space_after=0))
+    # Certifications
+    story.append(heading("Certifications & Specialized Training"))
+    cert_l = [
+        "• Bioinformatics Specialization – Coursera / UC San Diego (2024)",
+        "• Python for Genomic Data Science – Coursera / Johns Hopkins (2024)",
+        "• Industrial Biotechnology & GMP – NPTEL / IIT Madras (2023)",
+    ]
+    cert_r = [
+        "• Advanced Techniques in Biotechnology – Parul University (2025)",
+        "• Molecular Biology Techniques – Udemy (2023)",
+        "• Digital Marketing & Web Foundations – Google / ITI (2021–2024)",
+    ]
+    cert_tbl = Table(
+        [[Paragraph(l, S["small"]), Paragraph(r, S["small"])] for l, r in zip(cert_l, cert_r)],
+        colWidths=[CW / 2.0, CW / 2.0],
+    )
+    cert_tbl.setStyle(
+        TableStyle(
+            [
+                ("VALIGN", (0, 0), (-1, -1), "TOP"),
+                ("LEFTPADDING", (0, 0), (-1, -1), 0),
+                ("RIGHTPADDING", (0, 0), (-1, -1), 4),
+                ("TOPPADDING", (0, 0), (-1, -1), 1),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 1),
+            ]
+        )
+    )
+    story.append(cert_tbl)
+    story.append(Spacer(1, 2))
 
-# ================================================================ build
-doc = BaseDocTemplate(
-    OUT, pagesize=A4,
-    leftMargin=ML, rightMargin=MR, topMargin=MT, bottomMargin=MB,
-    title="Balaji Dilipsingh Rajput - QA Officer Resume",
-    author="Balaji Dilipsingh Rajput",
-    subject=("Pharmaceutical Quality Assurance | QA Officer | IPQA | GMP | GDP | "
-             "Schedule M | CAPA | Deviation | Change Control | BMR | BPR | OOS | "
-             "QMS | APQR | WHO-GMP | CDSCO | ICH | Data Integrity | OSD Tablet"),
-    keywords=("Quality Assurance, QA Officer, QA Executive, IPQA, Pharmaceutical QA, "
-              "GMP, cGMP, GDP, GLP, SOP, CAPA, Deviation Management, Change Control, "
-              "BMR, BPR, Batch Record Review, OOS, OOT, QMS, Internal Audit, "
-              "Documentation Control, Data Integrity, ICH Guidelines, WHO-GMP, CDSCO, "
-              "21 CFR Part 11, APQR, Stability, Vadodara, Gujarat, Tablet, OSD"))
+    # Achievements
+    story.append(heading("Key Honors & Achievements"))
+    story.append(
+        bullets(
+            [
+                "<b>Best Research Project Award (2024)</b> – Parul Institute of Technology & Engineering for Bioethanol SSF optimization.",
+                "<b>Dean's List for Academic Excellence (2024–2025)</b> – Recognized for top percentile academic performance in Biotechnology coursework.",
+                "<b>Automated Genomic Pipeline</b> – Developed Python workflow reducing manual sequence curation time by 40% (AMR study).",
+            ],
+            gap=1.5,
+        )
+    )
+    story.append(Spacer(1, 2))
 
-frame = Frame(ML, MB, CW, PH - MT - MB, id="full",
-              leftPadding=0, rightPadding=0, topPadding=0, bottomPadding=0)
-doc.addPageTemplates([PageTemplate(id="main", frames=[frame], onPage=on_page)])
-doc.build(story, canvasmaker=NumberedCanvas)
-print(f"Created {OUT}")
+    # Personal Dossier & Declaration
+    story.append(heading("Personal Dossier & Declaration"))
+    story.append(Paragraph("<b>Languages Known:</b> English (Fluent), Hindi (Fluent), Gujarati (Native)", S["small"]))
+    story.append(Spacer(1, 1))
+    story.append(Paragraph("<b>Details:</b> Date of Birth: 20 June 2001 | Marital Status: Single | Nationality: Indian | Availability: Immediate Joiner", S["small"]))
+    story.append(Spacer(1, 2))
+    story.append(Paragraph("<i>I hereby solemnly declare that all statements and particulars provided in this resume are true, complete, and authentic to the best of my knowledge.</i>", S["decl"]))
+    story.append(Spacer(1, 3))
+
+    sig_data = [
+        [Paragraph("<b>Place:</b> Vadodara, Gujarat", S["small"]), Paragraph("<b>(Balaji Dilipsingh Rajput)</b>", S["job_right"])],
+        [Paragraph("<b>Date:</b> ____________________", S["small"]), Paragraph("Candidate Signature", S["job_right"])],
+    ]
+    sig_table = Table(sig_data, colWidths=[CW * 0.5, CW * 0.5])
+    sig_table.setStyle(TableStyle([("LEFTPADDING", (0, 0), (-1, -1), 0), ("TOPPADDING", (0, 0), (-1, -1), 1)]))
+    story.append(sig_table)
+
+    return story
+
+
+def build_experienced_story() -> List[Flowable]:
+    story: List[Flowable] = []
+    title_text = "Quality Assurance Officer  |  IPQA Officer  |  Pharmaceutical QA"
+    story.extend(header_block(title_text))
+
+    # Professional Summary
+    story.append(heading("Professional Summary"))
+    story.append(
+        Paragraph(
+            "Detail-oriented and compliance-focused Quality Assurance Officer with 2+ years of hands-on experience in Oral Solid Dosage "
+            "(tablet) manufacturing at Elysium Pharmaceuticals Ltd., Vadodara, working within cGMP, GDP, and Schedule M frameworks. "
+            "Skilled in SOP authoring, deviation management, CAPA, BMR/BPR review, change control, in-process quality checks (IPQA), and "
+            "OOS/OOT investigation support. Proven audit readiness for CDSCO and WHO-GMP inspections. Available immediately.",
+            S["body"],
+        )
+    )
+    story.append(Spacer(1, 2))
+
+    # Core Competencies
+    story.append(heading("Core Competencies"))
+    comp_l = [
+        "• cGMP / GDP / GLP & Schedule M",
+        "• SOP Writing & Periodic Review",
+        "• Batch Record Review (BMR / BPR)",
+        "• Deviation Management & CAPA",
+        "• Change Control Management",
+        "• OOS / OOT Investigation Support",
+    ]
+    comp_r = [
+        "• In-Process Quality Assurance (IPQA)",
+        "• Internal Audit & Self-Inspection",
+        "• QMS & Documentation Control",
+        "• Data Integrity (ALCOA+) & 21 CFR 11",
+        "• CDSCO / WHO-GMP Audit Readiness",
+        "• Vendor Qualification Support",
+    ]
+    c_table = Table(
+        [[Paragraph(l, S["small"]), Paragraph(r, S["small"])] for l, r in zip(comp_l, comp_r)],
+        colWidths=[CW / 2.0, CW / 2.0],
+    )
+    c_table.setStyle(
+        TableStyle(
+            [
+                ("VALIGN", (0, 0), (-1, -1), "TOP"),
+                ("LEFTPADDING", (0, 0), (-1, -1), 0),
+                ("RIGHTPADDING", (0, 0), (-1, -1), 4),
+                ("TOPPADDING", (0, 0), (-1, -1), 1),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 1),
+            ]
+        )
+    )
+    story.append(c_table)
+    story.append(Spacer(1, 2))
+
+    # Professional Experience
+    story.append(heading("Professional Experience"))
+    exp_tbl = Table(
+        [
+            [
+                Paragraph("<b>QA Officer / IPQA Officer</b> — Elysium Pharmaceuticals Ltd.", S["job_left"]),
+                Paragraph("Mar 2024 – Mar 2026 (2 Years)", S["job_right"]),
+            ]
+        ],
+        colWidths=[CW * 0.75, CW * 0.25],
+    )
+    exp_tbl.setStyle(TableStyle([("LEFTPADDING", (0, 0), (-1, -1), 0), ("TOPPADDING", (0, 0), (-1, -1), 0)]))
+    story.append(exp_tbl)
+    story.append(Paragraph("Dabhasa, Vadodara, Gujarat  •  Department: Quality Assurance", S["meta"]))
+    story.append(
+        bullets(
+            [
+                "Authored and reviewed Standard Operating Procedures (SOPs) maintaining cGMP, GDP, and Schedule M compliance.",
+                "Reviewed and verified 50+ BMRs and BPRs monthly alongside yield reconciliation logs, reducing discrepancies by 15%.",
+                "Conducted line clearance and in-process quality checks (IPQA) across granulation, compression, and packaging.",
+                "Identified and investigated deviations using structured root-cause analysis (5-Why, Fishbone); executed CAPAs to timely closure.",
+                "Prepared documentation packages and supported audit readiness for CDSCO and WHO-GMP regulatory inspections.",
+            ],
+            gap=1,
+        )
+    )
+    story.append(Spacer(1, 2))
+
+    # Education
+    story.append(heading("Education"))
+    edu_tbl = Table(
+        [
+            [
+                Paragraph("<b>Diploma in Biotechnology</b>", S["job_left"]),
+                Paragraph("2021 – 2025", S["job_right"]),
+            ]
+        ],
+        colWidths=[CW * 0.75, CW * 0.25],
+    )
+    edu_tbl.setStyle(TableStyle([("LEFTPADDING", (0, 0), (-1, -1), 0), ("TOPPADDING", (0, 0), (-1, -1), 0)]))
+    story.append(edu_tbl)
+    story.append(Paragraph("Parul Institute of Technology & Engineering, GTU, Vadodara", S["meta"]))
+    story.append(
+        bullets(
+            [
+                "Honours: Dean's List for Academic Excellence (2024–25); Best Research Project Award 2024 (Bioethanol SSF).",
+                "Key Subjects: Molecular Biology, Biochemistry, Microbiology, Bioprocess Technology, Immunology, Fermentation.",
+            ],
+            gap=1,
+        )
+    )
+
+    # PAGE 2
+    story.append(PageBreak())
+
+    # Projects
+    story.append(heading("Key Research Projects"))
+    story.append(
+        bullets(
+            [
+                "<b>Bioethanol Production from Agricultural Waste (2024):</b> Optimised SSF process with S. cerevisiae using RSM/DOE; achieved 15% yield improvement validated via HPLC and ANOVA (p&lt;0.05). Best Research Project Award.",
+                "<b>Comparative Genomic Analysis of AMR Genes (2024):</b> Analysed 120 bacterial genomes (NCBI GenBank) with an automated Python/Biopython BLAST pipeline; discovered 8 novel resistance gene variants from 500+ sequences.",
+                "<b>Protein Structure Prediction & Molecular Docking (2023):</b> Modelled 5 therapeutic proteins (SWISS-MODEL) and docked 50 ligands (AutoDock Vina); identified 3 lead compounds (binding affinity &le; -8.0 kcal/mol).",
+            ],
+            gap=2,
+        )
+    )
+    story.append(Spacer(1, 2))
+
+    # Technical Skills
+    story.append(heading("Technical Skills"))
+    story.append(
+        bullets(
+            [
+                "<b>QA / Regulatory:</b> GMP, cGMP, GDP, GLP, SOP Writing, CAPA, Deviation Management, BMR/BPR Review, Change Control, OOS/OOT, QMS, Internal Audit, 21 CFR Part 11, CDSCO, WHO-GMP.",
+                "<b>Laboratory:</b> HPLC, PCR (RT-PCR, qPCR), UV-Vis Spectrophotometry, Gel Electrophoresis, Microbial & Cell Culture, Sterility Testing, Autoclave, LAF.",
+                "<b>Bioinformatics:</b> Python (Biopython, Pandas, NumPy), R (Bioconductor), BLAST, ClustalW, NCBI GenBank, UniProt, AutoDock Vina, SWISS-MODEL, PyMOL.",
+                "<b>Software & Tools:</b> MS Office Suite (Advanced), TrackWise (Basics), SAP (Basics), SPSS, MATLAB, Git/GitHub.",
+            ],
+            gap=1.5,
+        )
+    )
+    story.append(Spacer(1, 2))
+
+    # Certifications
+    story.append(heading("Certifications"))
+    cert_l = [
+        "• Bioinformatics Specialization – Coursera / UCSD (2024)",
+        "• Python for Genomic Data Science – Coursera / JHU (2024)",
+        "• Industrial Biotech & GMP – NPTEL / IIT Madras (2023)",
+    ]
+    cert_r = [
+        "• Advanced Techniques in Biotech – Parul University (2025)",
+        "• Molecular Biology Techniques – Udemy (2023)",
+        "• Digital Marketing & Web Designing – Google / ITI (2021–2024)",
+    ]
+    cert_tbl = Table(
+        [[Paragraph(l, S["small"]), Paragraph(r, S["small"])] for l, r in zip(cert_l, cert_r)],
+        colWidths=[CW / 2.0, CW / 2.0],
+    )
+    cert_tbl.setStyle(
+        TableStyle(
+            [
+                ("VALIGN", (0, 0), (-1, -1), "TOP"),
+                ("LEFTPADDING", (0, 0), (-1, -1), 0),
+                ("RIGHTPADDING", (0, 0), (-1, -1), 4),
+                ("TOPPADDING", (0, 0), (-1, -1), 1),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 1),
+            ]
+        )
+    )
+    story.append(cert_tbl)
+    story.append(Spacer(1, 2))
+
+    # Key Achievements
+    story.append(heading("Key Achievements"))
+    story.append(
+        bullets(
+            [
+                "100% cGMP & GDP compliance maintained across batch records; zero critical observations during inspection reviews.",
+                "Authored 15+ SOPs driving 20% efficiency improvement; Best Research Project Award (Parul Institute 2024).",
+                "8 novel AMR variants identified; 40% reduction in curation time via Python automation; Dean's List 2024–2025.",
+            ],
+            gap=1.5,
+        )
+    )
+    story.append(Spacer(1, 2))
+
+    # Personal Details
+    story.append(heading("Personal Details & Declaration"))
+    story.append(Paragraph("<b>Languages:</b> English (Fluent), Hindi (Fluent), Gujarati (Native)", S["small"]))
+    story.append(Spacer(1, 1))
+    story.append(Paragraph("<b>Details:</b> Date of Birth: 20 June 2001 | Marital Status: Single | Nationality: Indian | Availability: Immediate Joiner", S["small"]))
+    story.append(Spacer(1, 2))
+    story.append(Paragraph("<i>I hereby declare that the information furnished above is true and correct to the best of my knowledge and belief.</i>", S["decl"]))
+    story.append(Spacer(1, 3))
+
+    sig_data = [
+        [Paragraph("<b>Place:</b> Vadodara, Gujarat", S["small"]), Paragraph("<b>(Balaji Dilipsingh Rajput)</b>", S["job_right"])],
+        [Paragraph("<b>Date:</b> ____________________", S["small"]), Paragraph("Candidate Signature", S["job_right"])],
+    ]
+    sig_table = Table(sig_data, colWidths=[CW * 0.5, CW * 0.5])
+    sig_table.setStyle(TableStyle([("LEFTPADDING", (0, 0), (-1, -1), 0), ("TOPPADDING", (0, 0), (-1, -1), 1)]))
+    story.append(sig_table)
+
+    return story
+
+
+def build_pdf(output_file: str, profile: str = "fresher") -> str:
+    out_path = Path(output_file).resolve()
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+
+    doc = BaseDocTemplate(
+        str(out_path),
+        pagesize=A4,
+        leftMargin=ML,
+        rightMargin=MR,
+        topMargin=MT,
+        bottomMargin=MB,
+        title=f"Balaji Dilipsingh Rajput - {profile.title()} Resume",
+        author="Balaji Dilipsingh Rajput",
+        subject=f"{profile.title()} Resume for Biotechnology & Pharmaceutical QA/QC",
+    )
+
+    frame = Frame(ML, MB, CW, PH - MT - MB, id="full", leftPadding=0, rightPadding=0, topPadding=0, bottomPadding=0)
+    doc.addPageTemplates([PageTemplate(id="main", frames=[frame])])
+
+    story = build_fresher_story() if profile == "fresher" else build_experienced_story()
+    doc.build(story, canvasmaker=NumberedCanvas)
+    print(f"Created {out_path} ({profile} profile)")
+    return str(out_path)
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description="Generate ATS-compliant resume PDF.")
+    parser.add_argument("--profile", choices=["fresher", "experienced"], default="fresher", help="Profile to generate (default: fresher)")
+    parser.add_argument("--output", "-o", type=str, default=None, help="Output PDF file path")
+    args = parser.parse_args()
+
+    default_name = "Balaji_Rajput_Fresher_Resume.pdf" if args.profile == "fresher" else "Balaji_Rajput_QA_Officer_Resume.pdf"
+    output = args.output or str(Path(__file__).resolve().parent / default_name)
+
+    build_pdf(output, profile=args.profile)
+
+
+if __name__ == "__main__":
+    main()

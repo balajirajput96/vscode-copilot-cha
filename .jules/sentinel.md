@@ -16,3 +16,8 @@
 **Vulnerability:** The automation scripts (`run.py` and `run_repo.py`) used `hashlib.sha1()` to generate deduplication keys, which triggered Bandit High-Severity issue B324. SHA-1 is cryptographically weak and prone to collision attacks.
 **Learning:** Even for non-cryptographic deduplication, it is best practice to use stronger hashes like SHA-256 to avoid security scanning warnings and reduce the risk of accidental collisions.
 **Prevention:** Upgraded `hashlib.sha1` to `hashlib.sha256` in all relevant files.
+
+## 2026-11-07 - [CRITICAL] Missing Security Headers in Express Application
+**Vulnerability:** The Express backend application lacked essential security headers (X-Content-Type-Options, X-Frame-Options, X-XSS-Protection) and exposed the 'X-Powered-By' header, making it susceptible to various attacks like clickjacking, MIME-sniffing, and cross-site scripting (XSS), as well as leaking technology stack information.
+**Learning:** By default, Express does not set modern security headers, leaving applications vulnerable unless explicitly configured. Relying on third-party dependencies like 'helmet' is not always feasible when there are strict boundaries against adding new dependencies.
+**Prevention:** Always implement custom middleware in Express applications to explicitly set security headers (X-Content-Type-Options, X-Frame-Options, X-XSS-Protection) and disable the 'x-powered-by' header when third-party libraries cannot be used.

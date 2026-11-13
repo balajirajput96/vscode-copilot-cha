@@ -21,6 +21,7 @@
  ======================================================================
 """
 import csv
+import html
 import re
 import urllib.parse
 from pathlib import Path
@@ -71,10 +72,10 @@ def main():
         print(f"{company} ({name}, +{phone}):\n  {link}\n")
 
     cards = "\n".join(
-        f'<div class="card"><b>{c}</b> &middot; {n} &middot; +{p}<br>'
-        f'<a class="btn" href="{l}" target="_blank" rel="noopener">Open in WhatsApp</a></div>'
+        f'<div class="card"><b>{html.escape(c)}</b> &middot; {html.escape(n)} &middot; +{html.escape(p)}<br>'
+        f'<a class="btn" href="{html.escape(l)}" target="_blank" rel="noopener">Open in WhatsApp</a></div>'
         for c, n, p, l in rows)
-    html = (
+    html_content = (
         "<!doctype html><meta charset=utf-8><title>WhatsApp outreach</title>"
         "<style>body{font-family:sans-serif;max-width:680px;margin:24px auto;padding:0 12px}"
         ".card{border:1px solid #ddd;border-radius:8px;padding:12px;margin:10px 0}"
@@ -84,7 +85,7 @@ def main():
         "<p>Click a button, review the pre-filled message, then press send in "
         "WhatsApp. Only message people who are open to being contacted.</p>"
         + cards)
-    OUT_HTML.write_text(html, encoding="utf-8")
+    OUT_HTML.write_text(html_content, encoding="utf-8")
     print(f"Wrote {OUT_HTML.name} ({len(rows)} contacts). Open it in a browser and click each button.")
 
 

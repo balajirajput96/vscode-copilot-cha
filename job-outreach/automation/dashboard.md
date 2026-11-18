@@ -1,4 +1,4 @@
-# Job Dashboard — updated 2026-11-17
+# Job Dashboard — updated 2026-11-18
 
 - New added today: **0**  |  Total tracked: **17**
 - Walk-ins available: **8**

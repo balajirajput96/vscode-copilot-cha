@@ -4,6 +4,18 @@ const path = require('path');
 const app = express();
 const port = process.env.PORT || 3001;
 
+// 🛡️ Sentinel: Security Enhancement
+// Disable x-powered-by header to prevent information leakage
+app.disable('x-powered-by');
+
+// Add custom middleware to set security headers
+app.use((req, res, next) => {
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'DENY');
+  res.setHeader('X-XSS-Protection', '1; mode=block');
+  next();
+});
+
 /**
  * @route GET /api/hello
  * @description A simple test endpoint to ensure the server is running.
